@@ -1,0 +1,73 @@
+#  numerical columns with the mean or median
+for col in intl_edu_df.select_dtypes(include=np.number).columns:
+  if intl_edu_df[col].isnull().any():
+    median_val = intl_edu_df[col].median()
+    intl_edu_df[col].fillna(median_val, inplace=True)
+
+# Example: Impute categorical columns with the mode
+for col in intl_edu_df.select_dtypes(include='object').columns:
+  if intl_edu_df[col].isnull().any():
+    mode_val = intl_edu_df[col].mode()[0]
+    intl_edu_df[col].fillna(mode_val, inplace=True)
+
+# Verify the cleaning process
+print("\nDataset after cleaning:")
+print(intl_edu_df.info())
+print("\nMissing values after cleaning:")
+print(intl_edu_df.isnull().sum())
+
+# Handle missing values: Impute or drop based on analysis
+print(intl_edu_df[['Country', 'Tuition_USD']].dropna())
+
+print(intl_edu_df['Tuition_USD'].describe())
+print(intl_edu_df['Country'].unique())
+
+# data processing
+
+# Summary statistics
+print("\nSummary statistics after cleaning:")
+print(intl_edu_df.describe(include='all'))
+print("\nData Processing Complete.")
+
+# Drop rows with any missing values
+intl_edu_df_dropped_rows = intl_edu_df.dropna()
+# Drop columns with any missing values
+intl_edu_df_dropped_cols = intl_edu_df.dropna(axis=1)
+print("\nDataset after dropping rows with NaNs:")
+print(intl_edu_df_dropped_rows.info())
+print("\nDataset after dropping columns with NaNs:")
+print(intl_edu_df_dropped_cols.info())
+# --- Visualizations ---
+# Distribution of Tuition Costs
+plt.figure(figsize=(10, 6))
+sns.histplot(intl_edu_df['Tuition_USD'], kde=True, bins=20)
+plt.title('Distribution of Tuition Costs')
+plt.xlabel('Tuition (USD)')
+plt.ylabel('Frequency')
+plt.show()
+
+# Box plot of Tuition Costs by Country (Top 10)
+plt.figure(figsize=(12, 8))
+top_countries = avg_tuition.head(10).index
+sns.boxplot(x='Country', y='Tuition_USD', data=intl_edu_df[intl_edu_df['Country'].isin(top_countries)])
+plt.title('Tuition Costs by Country (Top 10)')
+plt.xlabel('Country')
+plt.ylabel('Tuition (USD)')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# Scatter plot of Tuition vs. Living Cost Index
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='Living_Cost_Index', y='Tuition_USD', data=intl_edu_df)
+plt.title('Tuition vs. Living Cost Index')
+plt.xlabel('Living Cost Index')
+plt.ylabel('Tuition (USD)')
+plt.show()
+
+# Correlation Heatmap of numerical features
+plt.figure(figsize=(10, 8))
+correlation_matrix = intl_edu_df.select_dtypes(include=np.number).corr()
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", vmin=-1, vmax=1)
+plt.title('Correlation Heatmap of Numerical Features')
+plt.show()
