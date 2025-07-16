@@ -1,0 +1,89 @@
+!pip install pandas
+!pip install numpy
+!pip install matplotlib
+!pip install seaborn
+
+# Import libraries for data analysis and visualization
+import pandas as pd         # Data manipulation
+import numpy as np          # Numerical operations
+import matplotlib.pyplot as plt  # Plotting
+import seaborn as sns      # Statistical data visualization
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+def load_data(file_path):
+  file_path = '/content/drive/My Drive/linkdein job posting/postings.csv'
+  df = pd.read_csv(file_path)
+  return df
+
+#  preivew the data set
+
+df = load_data('/content/drive/My Drive/linkdein job posting/postings.csv')
+print(df)
+
+# location wise linkedin job postings count
+location_counts = df['location'].value_counts()
+display(location_counts.head())
+
+#  data types to understand what kind of plots are appropriate
+print(df.info())
+
+# plot1: Relationship between work_type and job type (if both columns exist)
+if 'work_type' in df.columns and 'formatted_work_type' in df.columns:
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=df, x='work_type', hue='formatted_work_type')
+    plt.title('formatted_work_type Distribution by work_type')
+    plt.xlabel('Experience Level')
+    plt.ylabel('Number of Postings')
+    plt.tight_layout()
+    plt.show()
+
+
+# plot2: Top N companies by number of postings
+if 'company_name' in df.columns:
+    top_companies = df['company_name'].value_counts().nlargest(10) # Adjust N as needed
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=top_companies.values, y=top_companies.index)
+    plt.title('Top 10 Companies by Number of Job Postings')
+    plt.xlabel('Number of Postings')
+    plt.ylabel('Company Name')
+    plt.tight_layout()
+    plt.show()
+else:
+    print("'company_name' column not found.")
+
+# Visualize the top N job titles
+if 'title' in df.columns:
+    top_n_titles = 10 # Adjust N as needed
+    top_titles = df['title'].value_counts().nlargest(top_n_titles)
+
+    plt.figure(figsize=(12, 6))
+    sns.barplot(x=top_titles.values, y=top_titles.index, palette='viridis')
+    plt.title(f'Top {top_n_titles} Job Titles by Number of Postings')
+    plt.xlabel('Number of Postings')
+    plt.ylabel('Job Title')
+    plt.tight_layout()
+    plt.show()
+else:
+    print("'title' column not found.")
+
+# Visualize the distribution of work types by location for the top N locations
+if 'work_type' in df.columns and 'location' in df.columns:
+    top_n_locations = 10 # Use the same N as the previous location plot
+
+    # Get the top N locations
+    top_locations = df['location'].value_counts().nlargest(top_n_locations).index.tolist()
+
+    # Filter the DataFrame to include only the top locations
+    df_top_locations = df[df['location'].isin(top_locations)]
+
+    plt.figure(figsize=(14, 7))
+    sns.countplot(data=df_top_locations, y='location', hue='work_type', order=top_locations, palette='viridis')
+    plt.title(f'Distribution of Work Types in Top {top_n_locations} Locations')
+    plt.xlabel('Number of Postings')
+    plt.ylabel('Location')
+    plt.tight_layout()
+    plt.show()
+else:
+    print("Cannot plot work type distribution by location (one or both columns missing).")
