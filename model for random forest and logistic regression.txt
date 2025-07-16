@@ -1,0 +1,75 @@
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# For predict 'work_type' based on other features.
+features = ['location', 'company_name', 'title']
+target = 'work_type'
+
+# Drop rows where any of the selected features or target are missing
+df_model = df[features + [target]].dropna().copy()
+
+# Encode categorical features
+categorical_features = ['location', 'company_name', 'title']
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('onehot', OneHotEncoder(handle_unknown='ignore'), categorical_features)],
+    remainder='passthrough') # Keep other columns if any
+
+# Encode the target variable
+le = LabelEncoder()
+df_model[target] = le.fit_transform(df_model[target])
+
+# Split data into training and testing sets
+X = df_model[features]
+y = df_model[target]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y) # Stratify for balanced classes
+
+# --- Model Training ---
+
+# Random Forest
+rf_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                              ('classifier', RandomForestClassifier(n_estimators=100, random_state=42))])
+
+rf_pipeline.fit(X_train, y_train)
+rf_pred = rf_pipeline.predict(X_test)
+rf_accuracy = accuracy_score(y_test, rf_pred)
+
+print(f"Random Forest Accuracy: {rf_accuracy:.4f}")
+print("Random Forest Classification Report:\n", classification_report(y_test, rf_pred, target_names=le.classes_))
+print("Random Forest Confusion Matrix:\n", confusion_matrix(y_test, rf_pred))
+
+# Logistic Regression
+lr_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                              ('classifier', LogisticRegression(max_iter=1000, random_state=42))])
+
+lr_pipeline.fit(X_train, y_train)
+lr_pred = lr_pipeline.predict(X_test)
+lr_accuracy = accuracy_score(y_test, lr_pred)
+
+print(f"\nLogistic Regression Accuracy: {lr_accuracy:.4f}")
+print("Logistic Regression Classification Report:\n", classification_report(y_test, lr_pred, target_names=le.classes_))
+print("Logistic Regression Confusion Matrix:\n", confusion_matrix(y_test, lr_pred))
+
+
+# --- Plotting Accuracies ---
+models = ['Random Forest', 'Logistic Regression']
+accuracies = [rf_accuracy, lr_accuracy]
+
+plt.figure(figsize=(10, 5))
+sns.barplot(x=models, y=accuracies, palette='viridis')
+plt.ylim(0, 1) # Accuracy is between 0 and 1
+plt.title('Model Accuracy Comparison')
+plt.ylabel('Accuracy')
+plt.show()
+
+
+plt.tight_layout()
+plt.show()
