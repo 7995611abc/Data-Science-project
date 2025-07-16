@@ -1,0 +1,27 @@
+!pip install pandas
+!pip install numpy
+!pip install matplotlib
+!pip install seaborn
+
+# Import libraries for data analysis and visualization
+import pandas as pd         # Data manipulation
+import numpy as np          # Numerical operations
+import matplotlib.pyplot as plt  # Plotting
+import seaborn as sns      # Statistical data visualization
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+def load_data(file_path):
+  file_path = '/content/drive/My Drive/International_Education_Costs/International_Education_Costs.csv'
+  df = pd.read_csv(file_path)
+  return df
+
+# Preview the datasets
+print("International Education Costs Dataset Preview:")
+intl_edu_df = load_data('/content/drive/My Drive/International_Education_Costs.csv')
+print(intl_edu_df)
+
+# Average tuition by country
+avg_tuition = intl_edu_df.groupby('Country')['Tuition_USD'].mean().sort_values(ascending=False)
+avg_tuition.head()
