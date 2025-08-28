@@ -1,0 +1,463 @@
+# posting dataset code
+!pip install pandas
+!pip install numpy
+!pip install matplotlib
+!pip install seaborn
+
+# Import libraries for data analysis and visualization
+import pandas as pd         # Data manipulation
+import numpy as np          # Numerical operations
+import matplotlib.pyplot as plt  # Plotting
+import seaborn as sns      # Statistical data visualization
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+def load_data(file_path):
+  file_path = '/content/drive/My Drive/linkdein job posting/postings.csv'
+  df = pd.read_csv(file_path)
+  return df
+
+#  preivew the data set
+
+df = load_data('/content/drive/My Drive/linkdein job posting/postings.csv')
+print(df.head(20))
+
+# location wise linkedin job postings count
+location_counts = df['location'].value_counts()
+display(location_counts.head())
+
+
+
+#  data types to understand what kind of plots are appropriate
+print(df.info())
+
+# plot1: Relationship between work_type and job type (if both columns exist)
+if 'work_type' in df.columns and 'formatted_work_type' in df.columns:
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=df, x='work_type', hue='formatted_work_type')
+    plt.title('formatted_work_type Distribution by work_type')
+    plt.xlabel('Experience Level')
+    plt.ylabel('Number of Postings')
+    plt.tight_layout()
+    plt.show()
+
+
+# plot2: Top N companies by number of postings
+if 'company_name' in df.columns:
+    top_companies = df['company_name'].value_counts().nlargest(10) # Adjust N as needed
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=top_companies.values, y=top_companies.index)
+    plt.title('Top 10 Companies by Number of Job Postings')
+    plt.xlabel('Number of Postings')
+    plt.ylabel('Company Name')
+    plt.tight_layout()
+    plt.show()
+else:
+    print("'company_name' column not found.")
+
+# Visualize the top N job titles
+if 'title' in df.columns:
+    top_n_titles = 10 # Adjust N as needed
+    top_titles = df['title'].value_counts().nlargest(top_n_titles)
+
+    plt.figure(figsize=(12, 6))
+    sns.barplot(x=top_titles.values, y=top_titles.index, palette='viridis')
+    plt.title(f'Top {top_n_titles} Job Titles by Number of Postings')
+    plt.xlabel('Number of Postings')
+    plt.ylabel('Job Title')
+    plt.tight_layout()
+    plt.show()
+else:
+    print("'title' column not found.")
+
+# Visualize the distribution of work types by location for the top N locations
+if 'work_type' in df.columns and 'location' in df.columns:
+    top_n_locations = 10 # Use the same N as the previous location plot
+
+    # Get the top N locations
+    top_locations = df['location'].value_counts().nlargest(top_n_locations).index.tolist()
+
+    # Filter the DataFrame to include only the top locations
+    df_top_locations = df[df['location'].isin(top_locations)]
+
+    plt.figure(figsize=(14, 7))
+    sns.countplot(data=df_top_locations, y='location', hue='work_type', order=top_locations, palette='viridis')
+    plt.title(f'Distribution of Work Types in Top {top_n_locations} Locations')
+    plt.xlabel('Number of Postings')
+    plt.ylabel('Location')
+    plt.tight_layout()
+    plt.show()
+else:
+    print("Cannot plot work type distribution by location (one or both columns missing).")
+
+# Analyze and visualize salary distribution by location for top N locations
+
+if 'location' in df.columns and ('min_salary' in df.columns or 'max_salary' in df.columns or 'med_salary' in df.columns):
+    top_n_locations = 10 # Use the same N as before
+
+    # Get the top N locations
+    top_locations = df['location'].value_counts().nlargest(top_n_locations).index.tolist()
+
+    # Filter the DataFrame to include only the top locations and relevant salary columns
+    salary_cols = ['min_salary', 'med_salary', 'max_salary']
+    available_salary_cols = [col for col in salary_cols if col in df.columns]
+
+    if available_salary_cols:
+        df_top_locations_salary = df[df['location'].isin(top_locations)].copy()
+
+        # Calculate average of available salary columns for each location
+        # Handle cases where only one salary column is available
+        if len(available_salary_cols) > 1:
+            location_salary_stats = df_top_locations_salary.groupby('location')[available_salary_cols].mean().reset_index()
+        elif len(available_salary_cols) == 1:
+             location_salary_stats = df_top_locations_salary.groupby('location')[available_salary_cols[0]].mean().reset_index()
+             location_salary_stats = location_salary_stats.rename(columns={available_salary_cols[0]: 'average_salary'})
+
+
+        if not location_salary_stats.empty:
+            # Melt the DataFrame for easier plotting with seaborn
+            if len(available_salary_cols) > 1:
+                location_salary_melted = location_salary_stats.melt(id_vars='location',
+                                                                   value_vars=available_salary_cols,
+                                                                   var_name='salary_type',
+                                                                   value_name='average_salary')
+            elif len(available_salary_cols) == 1:
+                 location_salary_melted = location_salary_stats.melt(id_vars='location',
+                                                                    value_vars=['average_salary'],
+                                                                    var_name='salary_type',
+                                                                    value_name='average_salary')
+
+
+            plt.figure(figsize=(14, 7))
+            sns.barplot(data=location_salary_melted, x='average_salary', y='location', hue='salary_type', palette='viridis', order=top_locations)
+            plt.title(f'Average Salary by Type in Top {top_n_locations} Locations')
+            plt.xlabel('Average Salary')
+            plt.ylabel('Location')
+            plt.tight_layout()
+            plt.show()
+        else:
+            print("No salary data available for the top locations.")
+    else:
+        print("No valid salary columns found ('min_salary', 'max_salary', or 'med_salary').")
+
+else:
+    print("Cannot plot salary distribution by location (location column or salary columns missing).")
+
+#  Correlation heatmap
+# Select only numerical columns for the correlation matrix
+numerical_df = df.select_dtypes(include=[np.number])
+
+if not numerical_df.empty:
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(numerical_df.corr(), annot=True, cmap='coolwarm', fmt=".2f", vmin = -1, vmax = 1)
+    plt.title('Correlation Heatmap of Numerical Features')
+    plt.tight_layout()
+    plt.show()
+else:
+    print("No numerical columns found for the correlation heatmap.")
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+
+# For predict 'work_type' based on other features.
+features = ['location', 'company_name', 'title']
+target = 'work_type'
+
+# Drop rows where any of the selected features or target are missing
+df_model = df[features + [target]].dropna().copy()
+
+# Encode categorical features
+categorical_features = ['location', 'company_name', 'title']
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('onehot', OneHotEncoder(handle_unknown='ignore'), categorical_features)],
+    remainder='passthrough') # Keep other columns if any
+
+# Encode the target variable
+le = LabelEncoder()
+df_model[target] = le.fit_transform(df_model[target])
+
+# Split data into training and testing sets
+X = df_model[features]
+y = df_model[target]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y) # Stratify for balanced classes
+
+# --- Model Training with Epochs and Accuracy Tracking ---
+
+n_epochs = 50 # Define the number of epochs
+
+# Random Forest with Epochs
+rf_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                              ('classifier', RandomForestClassifier(n_estimators=100, random_state=42))])
+
+
+print("Training Random Forest Model...")
+rf_pipeline.fit(X_train, y_train)
+
+rf_train_accuracy = rf_pipeline.score(X_train, y_train)
+rf_val_accuracy = rf_pipeline.score(X_test, y_test)
+
+print(f"Random Forest Training Accuracy: {rf_train_accuracy:.4f}")
+print(f"Random Forest Validation Accuracy: {rf_val_accuracy:.4f}")
+print("Random Forest Classification Report:\n", classification_report(y_test, rf_pipeline.predict(X_test), target_names=le.classes_))
+print("Random Forest Confusion Matrix:\n", confusion_matrix(y_test, rf_pipeline.predict(X_test)))
+
+
+print("\nTraining Logistic Regression Model...")
+lr_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                              ('classifier', LogisticRegression(max_iter=1000, random_state=42))])
+
+lr_pipeline.fit(X_train, y_train)
+
+lr_train_accuracy = lr_pipeline.score(X_train, y_train)
+lr_val_accuracy = lr_pipeline.score(X_test, y_test)
+
+
+print(f"Logistic Regression Training Accuracy: {lr_train_accuracy:.4f}")
+print(f"Logistic Regression Validation Accuracy: {lr_val_accuracy:.4f}")
+print("Logistic Regression Classification Report:\n", classification_report(y_test, lr_pipeline.predict(X_test), target_names=le.classes_))
+print("Logistic Regression Confusion Matrix:\n", confusion_matrix(y_test, lr_pipeline.predict(X_test)))
+
+
+# --- Plotting Accuracies ---
+# we will plot the single final accuracy for comparison.
+models = ['Random Forest', 'Logistic Regression']
+accuracies = [rf_val_accuracy, lr_val_accuracy] # Using validation accuracy for comparison
+
+plt.figure(figsize=(10, 5))
+sns.barplot(x=models, y=accuracies, palette='viridis')
+plt.ylim(0, 1) # Accuracy is between 0 and 1
+plt.title('Model Validation Accuracy Comparison')
+plt.ylabel('Accuracy')
+plt.show()
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+from imblearn.combine import SMOTETomek
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+import pandas as pd
+
+# Load the data
+def load_data(file_path):
+  file_path = '/content/drive/My Drive/linkdein job posting/postings.csv'
+  df = pd.read_csv(file_path)
+  return df
+
+df = load_data('/content/drive/My Drive/linkdein job posting/postings.csv')
+
+# Assuming 'df' is already loaded and contains the necessary columns
+# For predict 'work_type' based on other features.
+features = ['location', 'company_name', 'title']
+target = 'work_type'
+
+# Drop rows where any of the selected features or target are missing
+df_model = df[features + [target]].dropna().copy()
+
+# Encode categorical features
+categorical_features = ['location', 'company_name', 'title']
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('onehot', OneHotEncoder(handle_unknown='ignore'), categorical_features)],
+    remainder='passthrough') # Keep other columns if any
+
+# Encode the target variable
+le = LabelEncoder()
+df_model[target] = le.fit_transform(df_model[target])
+
+# Split data into training and testing sets
+X = df_model[features]
+y = df_model[target]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y) # Stratify for balanced classes
+
+# Apply SMOTE-Tomek to the training data
+smote_tomek = SMOTETomek(random_state=42)
+
+# Apply the preprocessor before resampling
+X_train_processed = preprocessor.fit_transform(X_train)
+
+X_resampled, y_resampled = smote_tomek.fit_resample(X_train_processed, y_train)
+
+print("Shape of X_train before resampling:", X_train_processed.shape)
+print("Shape of X_resampled after resampling:", X_resampled.shape)
+print("\nDistribution of 'work_type' in y_train before resampling:")
+print(pd.Series(y_train).value_counts())
+print("\nDistribution of 'work_type' in y_resampled after resampling:")
+print(pd.Series(y_resampled).value_counts())
+
+
+# Random Forest with Resampled Data
+print("Training Random Forest Model with Resampled Data...")
+rf_model_resampled = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model_resampled.fit(X_resampled, y_resampled)
+
+# Evaluate Random Forest
+rf_pred_resampled = rf_model_resampled.predict(preprocessor.transform(X_test))
+print("\nRandom Forest Classification Report (Resampled Data):\n", classification_report(y_test, rf_pred_resampled, target_names=le.classes_))
+print("Random Forest Confusion Matrix (Resampled Data):\n", confusion_matrix(y_test, rf_pred_resampled))
+
+# Logistic Regression with Resampled Data
+print("\nTraining Logistic Regression Model with Resampled Data...")
+lr_model_resampled = LogisticRegression(max_iter=1000, random_state=42)
+lr_model_resampled.fit(X_resampled, y_resampled)
+
+# Evaluate Logistic Regression
+lr_pred_resampled = lr_model_resampled.predict(preprocessor.transform(X_test))
+print("\nLogistic Regression Classification Report (Resampled Data):\n", classification_report(y_test, lr_pred_resampled, target_names=le.classes_))
+print("Logistic Regression Confusion Matrix (Resampled Data):\n", confusion_matrix(y_test, lr_pred_resampled))
+
+# Plot Confusion Matrices with better labels
+fig, axes = plt.subplots(1, 2, figsize=(14, 6)) # Increased figure width
+
+# Get the class labels
+class_labels = le.classes_
+
+# Plot for Random Forest
+sns.heatmap(confusion_matrix(y_test, rf_pred_resampled), annot=True, fmt='d', cmap='Blues', ax=axes[0],
+            xticklabels=class_labels, yticklabels=class_labels)
+axes[0].set_title('Random Forest Confusion Matrix (Resampled Data)')
+axes[0].set_xlabel('Predicted Label')
+axes[0].set_ylabel('True Label')
+axes[0].tick_params(axis='x', rotation=45) # Rotate x-axis labels
+axes[0].tick_params(axis='y', rotation=0)  # Keep y-axis labels horizontal
+
+# Plot for Logistic Regression
+sns.heatmap(confusion_matrix(y_test, lr_pred_resampled), annot=True, fmt='d', cmap='Blues', ax=axes[1],
+            xticklabels=class_labels, yticklabels=class_labels)
+axes[1].set_title('Logistic Regression Confusion Matrix (Resampled Data)')
+axes[1].set_xlabel('Predicted Label')
+axes[1].set_ylabel('True Label')
+axes[1].tick_params(axis='x', rotation=45) # Rotate x-axis labels
+axes[1].tick_params(axis='y', rotation=0)  # Keep y-axis labels horizontal
+
+
+plt.tight_layout()
+plt.show()
+
+# Convert 'listed_time' to datetime objects (it's in milliseconds)
+df['listed_time'] = pd.to_datetime(df['listed_time'] / 1000, unit='s')
+
+# Set 'listed_time' as the index
+df.set_index('listed_time', inplace=True)
+
+# Resample by day and count job postings
+daily_postings = df.resample('D').size()
+
+# Display the first few entries of the daily_postings time series
+display(daily_postings.head())
+
+import matplotlib.pyplot as plt
+
+# Plot the forecast
+fig = model.plot(forecast)
+ax = fig.gca()
+ax.set_title('Job Postings Forecast')
+ax.set_xlabel('Date')
+ax.set_ylabel('Number of Postings')
+plt.show()
+
+# Plot the forecast components (trend, weekly seasonality)
+fig2 = model.plot_components(forecast)
+plt.show()
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+
+# X_train_processed and X_test_processed are already created and processed in the previous step
+
+# Determine the input dimension after one-hot encoding
+input_dim = X_train_processed.shape[1]
+
+# Determine the number of output classes (le is already defined and fitted)
+num_classes = len(le.classes_)
+
+# Reinitialize the Sequential model with the correct input dimension
+model = Sequential()
+
+# Add the input layer and first hidden layer
+model.add(Dense(128, activation='relu', input_shape=(input_dim,)))
+
+# Add additional hidden layers
+model.add(Dense(64, activation='relu'))
+model.add(Dense(32, activation='relu'))
+
+# Add the output layer
+model.add(Dense(num_classes, activation='softmax'))
+
+# Recompile the model
+optimizer = Adam(learning_rate=0.001) # Using Adam optimizer with a learning rate
+model.compile(optimizer=optimizer,
+              loss='sparse_categorical_crossentropy', # Suitable for label-encoded integer targets
+              metrics=['accuracy'])
+
+# Define the number of epochs and batch size
+n_epochs = 10
+batch_size = 60 # You can adjust this value
+
+# Train the model
+history = model.fit(X_train_processed, y_train,
+                    epochs=n_epochs,
+                    batch_size=batch_size,
+                    validation_data=(X_test_processed, y_test),
+                    verbose=1) # Set verbose to 1 to see training progress
+
+import matplotlib.pyplot as plt
+
+# Plot training & validation accuracy values
+plt.figure(figsize=(12, 6))
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model Accuracy over Epochs')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
+plt.show()
+
+# Plot training & validation loss values
+plt.figure(figsize=(12, 6))
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model Loss over Epochs')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
+plt.show()
+
+def load_data(file_path):
+  file_path = '/content/drive/My Drive/linkdein job posting/postings.csv'
+  df = pd.read_csv(file_path)
+  return df
+
+df = load_data('/content/drive/My Drive/linkdein job posting/postings.csv')
+
+work_type_distribution = df['work_type'].value_counts()
+print("Distribution of 'work_type':")
+print(work_type_distribution)
+
+!pip install imbalanced-learn
+
+# Plot the distribution of the resampled training data
+plt.figure(figsize=(10, 6))
+sns.countplot(x=y_resampled, palette='viridis')
+plt.title('Distribution of Work Types after SMOTE-Tomek Resampling')
+plt.xlabel('Work Type (Encoded)')
+plt.ylabel('Number of Postings')
+plt.xticks(ticks=range(len(le.classes_)), labels=le.classes_, rotation=45)
+plt.tight_layout()
+plt.show()
